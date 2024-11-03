@@ -1,8 +1,10 @@
 # EleDeejey
 
-EleDeejey is an alternative software for the [omriharel/deej](https://github.com/omriharel/deej), the hardware volume mixer.
+EleDeejey is an alternative Windows software for the [omriharel/deej](https://github.com/omriharel/deej), the hardware volume mixer.
 
 It consists of the electron [client](https://github.com/JaroslawPokropinski/EleDeejey/releases) and the [arduino code](https://github.com/JaroslawPokropinski/EleDeejey/blob/main/arduino/eleDeej.ino).
+
+It requires [nircmd.exe](https://www.nirsoft.net/utils/nircmd.html) to run.
 
 ## Starting Development
 
