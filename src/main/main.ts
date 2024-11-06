@@ -47,7 +47,6 @@ function getOrCreateConfig() {
   }
 
   // create config file if it doesn't exist
-
   fs.writeFileSync(configPath, yaml.dump(defaultConfig));
 
   return defaultConfig;
@@ -110,12 +109,12 @@ const startSerial = async (config: Config) => {
                 logger.log(`set volume to ${newVol} for ${appName}`);
                 if (appName === 'master') {
                   exec(
-                    `nircmd.exe setsysvolume ${Math.floor((newVol / 1023) * 65535)}`,
+                    `nircmd.exe setsysvolume ${Math.floor((newVol / 100) * 65535)}`,
                   );
                 }
 
                 if (appName.endsWith('.exe')) {
-                  exec(`nircmd.exe setappvolume ${appName} ${newVol / 1023}`);
+                  exec(`nircmd.exe setappvolume ${appName} ${newVol / 100}`);
                 }
               });
             }

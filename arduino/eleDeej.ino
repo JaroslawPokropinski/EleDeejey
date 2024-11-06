@@ -1,6 +1,6 @@
-const uint8_t analogInputs[] = {A0, A1, A2}; // connected arduino pins
-const String deejName = "deej";              // descriptive and unique name of your deej
-const bool revert = true;                    // revert the values eg. 1023 -> 0
+const uint8_t analogInputs[] = {A0, A1, A2, A3}; // connected arduino pins
+const String deejName = "deej";                  // descriptive and unique name of your deej
+const bool revert = true;                        // revert the values eg. 1023 -> 0
 
 // the size of the average window as exponent (the window size will be 2^N_EXP)
 const int N_EXP = 7;
@@ -14,6 +14,11 @@ FixedFract analogSliderAvg[NUM_SLIDERS];
 inline FixedFract toFixedPoint(int val)
 {
   return ((FixedFract)val) << MUL_EXP;
+}
+
+inline FixedFract mapToRange(FixedFract val, int oldMax, int newMax)
+{
+  return (val / oldMax) * newMax + (toFixedPoint(1) >> 1);
 }
 
 inline int roundToInt(FixedFract val)
@@ -102,10 +107,10 @@ void sendSliderValues()
 
   for (int i = 0; i < NUM_SLIDERS; i++)
   {
-    int printVal = roundToInt(analogSliderAvg[i]);
+    int printVal = roundToInt(mapToRange(analogSliderAvg[i], 1023, 100));
     if (revert)
     {
-      printVal = 1023 - printVal;
+      printVal = 100 - printVal;
     }
     builtString += String(printVal);
 
