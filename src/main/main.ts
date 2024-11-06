@@ -92,9 +92,10 @@ const startSerial = async (config: Config) => {
   let port: SerialPort | null = null;
   const volumeArr = Object.values(config.slider_mapping).map(() => 0);
 
-  setInterval(async () => {
+  const serialInterval = setInterval(async () => {
     try {
       if (port === null || !port.isOpen) {
+        port?.close();
         port?.destroy();
         port = await openSerialPort(config, (data) => {
           const newVolumeArr = data.split('|').map(Number);
@@ -127,6 +128,15 @@ const startSerial = async (config: Config) => {
       logger.error('Error: ', error);
     }
   }, 200);
+
+  return {
+    stop: () => {
+      clearInterval(serialInterval);
+      port?.close();
+      port?.destroy();
+      port = null;
+    },
+  };
 };
 
 /**
@@ -143,9 +153,19 @@ app.on('window-all-closed', () => {
 app
   .whenReady()
   .then(async () => {
-    const config = getOrCreateConfig();
+    let config = getOrCreateConfig();
+    let serial = await startSerial(config);
 
-    await startSerial(config);
+    fs.watchFile(configPath, { persistent: false }, () => {
+      logger.log('config file changed, restarting...');
+      config = getOrCreateConfig();
+      serial.stop();
+      startSerial(config)
+        .then((newSerial) => {
+          serial = newSerial;
+        })
+        .catch(logger.error);
+    });
 
     tray = new Tray(path.join(getAssetsPath(), 'assets', 'icons', '24x24.png'));
 
