@@ -4,9 +4,9 @@ import { app, shell, Tray, Menu } from 'electron';
 import fs from 'fs';
 import { SerialPort } from 'serialport';
 import yaml from 'js-yaml';
-import { exec } from 'child_process';
 import path from 'path';
 import logger from 'electron-log';
+import AudioNativeWin from 'audio-native-win';
 import { getAssetsPath } from './util';
 
 let tray: Tray | null = null;
@@ -29,7 +29,6 @@ function getOrCreateConfig() {
   const defaultConfig = {
     port: 'COM15',
     baudRate: 9600,
-    nirCmdPath: 'nirCmd.exe',
     slider_mapping: {
       0: 'master',
       1: 'discord.exe',
@@ -54,7 +53,10 @@ function getOrCreateConfig() {
 
 type Config = ReturnType<typeof getOrCreateConfig>;
 
-const openSerialPort = async (config: Config, onData: (data: string) => void) =>
+const openSerialPort = async (
+  config: Config,
+  onData: (data: string) => unknown,
+) =>
   new Promise<SerialPort>((resolve, reject) => {
     logger.log('open serial port');
     const port = new SerialPort({
@@ -78,12 +80,16 @@ const openSerialPort = async (config: Config, onData: (data: string) => void) =>
 
       dataBuffer += chunk.toString();
       while (dataBuffer.includes('\n')) {
-        const lines = dataBuffer.split('\n');
-        const line = lines.shift()?.replace('\r', '');
+        const lines = dataBuffer.split('\n').slice(-2);
+        const [firstLine, lastLine] = lines;
+        const line = firstLine?.replace('\r', '');
         if (line) {
-          onData(line);
+          const res = onData(line);
+          if (res instanceof Promise) {
+            res.catch(logger.error);
+          }
         }
-        dataBuffer = lines.join('\n');
+        dataBuffer = lastLine ?? '';
       }
     });
   });
@@ -92,13 +98,26 @@ const startSerial = async (config: Config) => {
   let port: SerialPort | null = null;
   const volumeArr = Object.values(config.slider_mapping).map(() => 0);
 
+  let sessions = AudioNativeWin.getAllSessions();
+  let lastSessionUpdate = new Date().getTime();
+
   const serialInterval = setInterval(async () => {
+    // update audio sessions
+    const now = new Date().getTime();
+    if (now - lastSessionUpdate > 1000) {
+      lastSessionUpdate = now;
+      sessions.forEach((session) => session.cleanup());
+      sessions = AudioNativeWin.getAllSessions();
+    }
+
+    // handle serial
     try {
       if (port === null || !port.isOpen) {
         port?.close();
         port?.destroy();
-        port = await openSerialPort(config, (data) => {
+        port = await openSerialPort(config, async (data) => {
           const newVolumeArr = data.split('|').map(Number);
+
           newVolumeArr.forEach((newVol, index) => {
             const oldVol = volumeArr[index];
             if (newVol !== oldVol) {
@@ -109,13 +128,17 @@ const startSerial = async (config: Config) => {
               appArr.forEach((appName) => {
                 logger.log(`set volume to ${newVol} for ${appName}`);
                 if (appName === 'master') {
-                  exec(
-                    `nircmd.exe setsysvolume ${Math.floor((newVol / 100) * 65535)}`,
-                  );
+                  sessions
+                    .find((session) => session.master)
+                    ?.setVolume(newVol / 100);
                 }
 
                 if (appName.endsWith('.exe')) {
-                  exec(`nircmd.exe setappvolume ${appName} ${newVol / 100}`);
+                  sessions
+                    .filter((session) => session.name === appName)
+                    .forEach((session) => {
+                      session.setVolume(newVol / 100);
+                    });
                 }
               });
             }
