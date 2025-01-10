@@ -4,8 +4,6 @@ EleDeejey is an alternative Windows software for the [omriharel/deej](https://gi
 
 It consists of the electron [client](https://github.com/JaroslawPokropinski/EleDeejey/releases) and the [arduino code](https://github.com/JaroslawPokropinski/EleDeejey/blob/main/arduino/eleDeej.ino).
 
-It requires [nircmd.exe](https://www.nirsoft.net/utils/nircmd.html) to run.
-
 ## Starting Development
 
 Start the app in the `dev` environment:
