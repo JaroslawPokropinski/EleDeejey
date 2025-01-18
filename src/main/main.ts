@@ -101,6 +101,13 @@ const startSerial = async (config: Config) => {
   let sessions = AudioNativeWin.getAllSessions();
   let lastSessionUpdate = new Date().getTime();
 
+  logger.log(
+    `Available audio sessions: ${sessions
+      .filter((s) => s.name)
+      .map((s) => `"${s.name}"`)
+      .join(', ')}`,
+  );
+
   const serialInterval = setInterval(async () => {
     // update audio sessions
     const now = new Date().getTime();
@@ -126,8 +133,8 @@ const startSerial = async (config: Config) => {
               const appArr = Array.isArray(slider) ? slider : [slider];
 
               appArr.forEach((appName) => {
-                logger.log(`set volume to ${newVol} for ${appName}`);
                 if (appName === 'master') {
+                  logger.log(`set volume to ${newVol} for ${appName}`);
                   sessions
                     .find((session) => session.master)
                     ?.setVolume(newVol / 100);
@@ -135,8 +142,14 @@ const startSerial = async (config: Config) => {
 
                 if (appName.endsWith('.exe')) {
                   sessions
-                    .filter((session) => session.name === appName)
+                    .filter(
+                      (session) =>
+                        session.name?.toUpperCase() === appName.toUpperCase(),
+                    )
                     .forEach((session) => {
+                      logger.log(
+                        `set volume to ${newVol} for ${session.name} ${session.pid}`,
+                      );
                       session.setVolume(newVol / 100);
                     });
                 }
