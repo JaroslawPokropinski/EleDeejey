@@ -42,6 +42,64 @@ interface Config {
   slider_mapping: Record<string, string | string[]>;
 }
 
+interface ProcessSelectorProps {
+  value: string;
+  onChange: (value: string) => void;
+  processes: string[];
+  placeholder?: string;
+}
+
+function ProcessSelector({
+  value,
+  onChange,
+  processes,
+  placeholder = 'Select or type a process...',
+}: ProcessSelectorProps) {
+  return (
+    <Popover
+      onOpenChange={() => {
+        window.electron.ipcRenderer.send('get-processes');
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1"
+        />
+      </PopoverTrigger>
+
+      <PopoverContent className="w-72 p-0">
+        <Command>
+          <CommandInput placeholder="Search processes..." />
+          <CommandEmpty>No processes found.</CommandEmpty>
+          <CommandList>
+            <CommandGroup>
+              {processes.map((proc) => (
+                <CommandItem
+                  key={proc}
+                  value={proc}
+                  onSelect={() => onChange(proc)}
+                >
+                  <Check
+                    className={cn(
+                      'mr-2 h-4 w-4',
+                      value === proc ? 'opacity-100' : 'opacity-0',
+                    )}
+                  />
+                  {proc}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function ConfigEditor() {
   const [config, setConfig] = useState<Config>({
     port: 'COM4',
@@ -60,20 +118,31 @@ export default function ConfigEditor() {
 
   // Load config and processes on component mount
   useEffect(() => {
-    window.electron.ipcRenderer.once('load-config', (_, ...args) => {
-      const result = args[0] as Config;
-      if (result) {
-        setConfig(result);
-      }
-    });
+    const cleanupLoadConfig = window.electron.ipcRenderer.once(
+      'load-config',
+      (_, ...args) => {
+        const result = args[0] as Config;
+        if (result) {
+          setConfig(result);
+        }
+      },
+    );
     window.electron.ipcRenderer.send('load-config');
 
     // Load processes
-    window.electron.ipcRenderer.once('get-processes', (_, ...args) => {
-      const processList = args[0] as string[];
-      setProcesses(processList);
-    });
+    const cleanupGetProcesses = window.electron.ipcRenderer.on(
+      'get-processes',
+      (_, ...args) => {
+        const processList = args[0] as string[];
+        setProcesses(processList);
+      },
+    );
     window.electron.ipcRenderer.send('get-processes');
+
+    return () => {
+      cleanupLoadConfig();
+      cleanupGetProcesses();
+    };
   }, []);
 
   const handlePortChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,18 +219,6 @@ export default function ConfigEditor() {
         },
       });
       setSaved(false);
-    }
-  };
-
-  const handleSelectProcess = (
-    process: string,
-    sliderIndex: string,
-    appIndex?: number,
-  ) => {
-    if (appIndex !== undefined) {
-      handleAppChange(sliderIndex, appIndex, process);
-    } else {
-      handleSliderLabelChange(sliderIndex, process);
     }
   };
 
@@ -312,58 +369,17 @@ export default function ConfigEditor() {
                               key={app + appIndex}
                               className="flex gap-2 mb-3 last:mb-0"
                             >
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Input
-                                    type="text"
-                                    value={app}
-                                    onChange={(e) =>
-                                      handleAppChange(
-                                        sliderIndex,
-                                        appIndex,
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Select or type a process..."
-                                    className="flex-1"
-                                  />
-                                </PopoverTrigger>
-                                <PopoverContent className="w-72 p-0">
-                                  <Command>
-                                    <CommandInput placeholder="Search processes..." />
-                                    <CommandEmpty>
-                                      No processes found.
-                                    </CommandEmpty>
-                                    <CommandList>
-                                      <CommandGroup>
-                                        {processes.map((proc) => (
-                                          <CommandItem
-                                            key={proc}
-                                            value={proc}
-                                            onSelect={() =>
-                                              handleSelectProcess(
-                                                proc,
-                                                sliderIndex,
-                                                appIndex,
-                                              )
-                                            }
-                                          >
-                                            <Check
-                                              className={cn(
-                                                'mr-2 h-4 w-4',
-                                                app === proc
-                                                  ? 'opacity-100'
-                                                  : 'opacity-0',
-                                              )}
-                                            />
-                                            {proc}
-                                          </CommandItem>
-                                        ))}
-                                      </CommandGroup>
-                                    </CommandList>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
+                              <ProcessSelector
+                                value={app}
+                                onChange={(newValue) =>
+                                  handleAppChange(
+                                    sliderIndex,
+                                    appIndex,
+                                    newValue,
+                                  )
+                                }
+                                processes={processes}
+                              />
                               <Button
                                 variant="outline"
                                 size="icon"
@@ -387,52 +403,13 @@ export default function ConfigEditor() {
                       </div>
                     ) : (
                       <div className="flex gap-2">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Input
-                              type="text"
-                              value={value as string}
-                              onChange={(e) =>
-                                handleSliderLabelChange(
-                                  sliderIndex,
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="Select or type a process..."
-                              className="flex-1"
-                            />
-                          </PopoverTrigger>
-
-                          <PopoverContent className="w-72 p-0">
-                            <Command>
-                              <CommandInput placeholder="Search processes..." />
-                              <CommandEmpty>No processes found.</CommandEmpty>
-                              <CommandList>
-                                <CommandGroup>
-                                  {processes.map((proc) => (
-                                    <CommandItem
-                                      key={proc}
-                                      value={proc}
-                                      onSelect={() =>
-                                        handleSelectProcess(proc, sliderIndex)
-                                      }
-                                    >
-                                      <Check
-                                        className={cn(
-                                          'mr-2 h-4 w-4',
-                                          value === proc
-                                            ? 'opacity-100'
-                                            : 'opacity-0',
-                                        )}
-                                      />
-                                      {proc}
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        <ProcessSelector
+                          value={value as string}
+                          onChange={(newValue) =>
+                            handleSliderLabelChange(sliderIndex, newValue)
+                          }
+                          processes={processes}
+                        />
                         <Button
                           variant="outline"
                           onClick={() => handleAppAdd(sliderIndex)}

@@ -11,7 +11,7 @@ export function createWindow(
   options?: Partial<BrowserWindowConstructorOptions>,
 ) {
   const mainWindow = new BrowserWindow({
-    show: true,
+    show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
@@ -32,6 +32,13 @@ export function createWindow(
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
+
+  mainWindow.on('close', (event) => {
+    if (mainWindow.isVisible()) {
+      event.preventDefault();
+    }
+    mainWindow.hide();
+  });
 
   mainWindow.on('minimize', () => {
     mainWindow.hide();
