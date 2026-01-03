@@ -34,13 +34,14 @@ export function registerIpcHandlers(): void {
     try {
       const windows = await openWindows();
       const processes = windows
-        .map((win) => win.owner.name)
-        .filter((name: string) => name && name.length > 0)
-        .filter(
-          (name: string, index: number, arr: string[]) =>
-            arr.indexOf(name) === index,
-        )
-        .sort();
+        .map((win) => ({
+          exe: win.owner.path.replace(/^.*[\\/]/, ''),
+          area: win.bounds.width * win.bounds.height,
+        }))
+        .sort((a, b) => b.area - a.area)
+        .map((win) => win.exe)
+        .filter((name, index, arr) => arr.indexOf(name) === index);
+
       event.reply('get-processes', processes);
     } catch (error) {
       logger.error('Error getting processes:', error);

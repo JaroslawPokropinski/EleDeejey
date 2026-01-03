@@ -1,5 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import './ConfigEditor.css';
+import { Button } from '@renderer/components/ui/button';
+import { Input } from '@renderer/components/ui/input';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@renderer/components/ui/card';
+import { Label } from '@renderer/components/ui/label';
+import { Alert, AlertDescription } from '@renderer/components/ui/alert';
+import { Badge } from '@renderer/components/ui/badge';
+import { Separator } from '@renderer/components/ui/separator';
+import { ScrollArea } from '@renderer/components/ui/scroll-area';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@renderer/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@renderer/components/ui/command';
+import {
+  Check,
+  AlertCircle,
+  CheckCircle2,
+  Settings2,
+  Sliders,
+  Plug,
+} from 'lucide-react';
+import { cn } from '@renderer/utils/cn';
 
 interface Config {
   port: string;
@@ -22,11 +57,6 @@ export default function ConfigEditor() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processes, setProcesses] = useState<string[]>([]);
-  const [openDropdown, setOpenDropdown] = useState<{
-    sliderIndex: string;
-    appIndex?: number;
-  } | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Load config and processes on component mount
   useEffect(() => {
@@ -44,17 +74,6 @@ export default function ConfigEditor() {
       setProcesses(processList);
     });
     window.electron.ipcRenderer.send('get-processes');
-
-    // Close dropdown on click outside
-    const handleClickOutside = () => {
-      setOpenDropdown(null);
-      setSearchQuery('');
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
   }, []);
 
   const handlePortChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,7 +100,6 @@ export default function ConfigEditor() {
     const isArray = Array.isArray(currentValue);
 
     if (isArray) {
-      // Keep the array, just don't change anything if it's an array
       return;
     }
 
@@ -102,7 +120,6 @@ export default function ConfigEditor() {
     if (Array.isArray(currentValue)) {
       newValue = [...currentValue, ''];
     } else {
-      // Convert string to array
       newValue = [currentValue as string, ''];
     }
 
@@ -146,13 +163,7 @@ export default function ConfigEditor() {
     } else {
       handleSliderLabelChange(sliderIndex, process);
     }
-    setOpenDropdown(null);
-    setSearchQuery('');
   };
-
-  const filteredProcesses = processes.filter((proc) =>
-    proc.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
 
   const handleAppRemove = (sliderIndex: string, appIndex: number) => {
     const currentValue = config.slider_mapping[sliderIndex];
@@ -185,211 +196,272 @@ export default function ConfigEditor() {
   };
 
   return (
-    <div className="config-editor">
-      <h1>⚙️ EleDeej Configuration</h1>
-
-      {error && (
-        <div className="error-message">
-          <span>❌</span> {error}
-        </div>
-      )}
-      {saved && (
-        <div className="success-message">
-          <span>✓</span> Configuration saved successfully!
-        </div>
-      )}
-
-      <div className="editor-section">
-        <h2>Serial Connection Settings</h2>
-        <div className="form-group">
-          <label htmlFor="port">🔌 Serial Port:</label>
-          <input
-            id="port"
-            type="text"
-            value={config.port}
-            onChange={handlePortChange}
-            placeholder="e.g., COM4"
-          />
+    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Settings2 className="w-8 h-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-slate-900">
+              EleDeej Configuration
+            </h1>
+          </div>
+          <p className="text-slate-600">
+            Manage your serial connection and slider mappings
+          </p>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="baudRate">📊 Baud Rate:</label>
-          <input
-            id="baudRate"
-            type="number"
-            value={config.baudRate}
-            onChange={handleBaudRateChange}
-          />
-        </div>
-      </div>
+        {/* Alerts */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        {saved && (
+          <Alert className="border-green-200 bg-green-50">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              Configuration saved successfully!
+            </AlertDescription>
+          </Alert>
+        )}
 
-      <div className="editor-section">
-        <h2>Slider Mapping</h2>
-        <p className="section-description">
-          Configure which applications each slider controls. Mix single apps and
-          multiple apps per slider.
-        </p>
-
-        {Object.keys(config.slider_mapping)
-          .sort()
-          .map((sliderIndex) => {
-            const value = config.slider_mapping[sliderIndex];
-            const isArray = Array.isArray(value);
-
-            return (
-              <div key={sliderIndex} className="slider-mapping">
-                <div className="slider-header p-2.5">
-                  <h3>🎚️ Slider {sliderIndex}</h3>
-                </div>
-
-                {isArray ? (
-                  <div className="app-list">
-                    {(value as string[]).map((app, appIndex) => (
-                      <div key={app + appIndex} className="app-item">
-                        <div className="process-selector">
-                          <input
-                            type="text"
-                            value={app}
-                            onChange={(e) =>
-                              handleAppChange(
-                                sliderIndex,
-                                appIndex,
-                                e.target.value,
-                              )
-                            }
-                            onFocus={() =>
-                              setOpenDropdown({
-                                sliderIndex,
-                                appIndex,
-                              })
-                            }
-                            placeholder="Type or select a process..."
-                          />
-                          {openDropdown?.sliderIndex === sliderIndex &&
-                            openDropdown?.appIndex === appIndex && (
-                              <div className="dropdown-menu">
-                                <input
-                                  type="text"
-                                  className="dropdown-search"
-                                  placeholder="Search processes..."
-                                  value={searchQuery}
-                                  onChange={(e) =>
-                                    setSearchQuery(e.target.value)
-                                  }
-                                  autoFocus
-                                />
-                                <div className="dropdown-list">
-                                  {filteredProcesses.length > 0 ? (
-                                    filteredProcesses.map((proc) => (
-                                      <div
-                                        key={proc}
-                                        className="dropdown-item"
-                                        onClick={() =>
-                                          handleSelectProcess(
-                                            proc,
-                                            sliderIndex,
-                                            appIndex,
-                                          )
-                                        }
-                                      >
-                                        {proc}
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div className="dropdown-empty">
-                                      No processes found
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleAppRemove(sliderIndex, appIndex)}
-                          className="btn-remove"
-                          title="Remove application"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => handleAppAdd(sliderIndex)}
-                      className="btn-add"
-                    >
-                      + Add Application
-                    </button>
-                  </div>
-                ) : (
-                  <div className="single-app">
-                    <div className="process-selector">
-                      <input
-                        type="text"
-                        value={value as string}
-                        onChange={(e) =>
-                          handleSliderLabelChange(sliderIndex, e.target.value)
-                        }
-                        onFocus={() =>
-                          setOpenDropdown({
-                            sliderIndex,
-                          })
-                        }
-                        placeholder="Type or select a process..."
-                      />
-                      {openDropdown?.sliderIndex === sliderIndex &&
-                        openDropdown?.appIndex === undefined && (
-                          <div className="dropdown-menu">
-                            <input
-                              type="text"
-                              className="dropdown-search"
-                              placeholder="Search processes..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              autoFocus
-                            />
-                            <div className="dropdown-list">
-                              {filteredProcesses.length > 0 ? (
-                                filteredProcesses.map((proc) => (
-                                  <div
-                                    key={proc}
-                                    className="dropdown-item"
-                                    onClick={() =>
-                                      handleSelectProcess(proc, sliderIndex)
-                                    }
-                                  >
-                                    {proc}
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="dropdown-empty">
-                                  No processes found
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleAppAdd(sliderIndex)}
-                      className="btn-convert"
-                      title="Convert to multiple applications"
-                    >
-                      → Multiple Apps
-                    </button>
-                  </div>
-                )}
+        {/* Serial Connection Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Plug className="w-5 h-5 text-blue-600" />
+              <div>
+                <CardTitle>Serial Connection Settings</CardTitle>
+                <CardDescription>
+                  Configure your device connection parameters
+                </CardDescription>
               </div>
-            );
-          })}
-      </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="port" className="text-base">
+                  Serial Port
+                </Label>
+                <Input
+                  id="port"
+                  type="text"
+                  value={config.port}
+                  onChange={handlePortChange}
+                  placeholder="e.g., COM4"
+                  className="text-base"
+                />
+                <p className="text-sm text-slate-500">
+                  e.g., COM4, /dev/ttyUSB0
+                </p>
+              </div>
 
-      <div className="editor-footer">
-        <button type="button" onClick={handleSave} className="btn-save">
-          💾 Save Configuration
-        </button>
+              <div className="space-y-2">
+                <Label htmlFor="baudRate" className="text-base">
+                  Baud Rate
+                </Label>
+                <Input
+                  id="baudRate"
+                  type="number"
+                  value={config.baudRate}
+                  onChange={handleBaudRateChange}
+                  className="text-base"
+                />
+                <p className="text-sm text-slate-500">e.g., 9600, 115200</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Slider Mapping */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Sliders className="w-5 h-5 text-blue-600" />
+              <div>
+                <CardTitle>Slider Mapping</CardTitle>
+                <CardDescription>
+                  Configure which applications each slider controls
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {Object.keys(config.slider_mapping)
+              .sort()
+              .map((sliderIndex) => {
+                const value = config.slider_mapping[sliderIndex];
+                const isArray = Array.isArray(value);
+
+                return (
+                  <div key={sliderIndex} className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="text-base px-3 py-1">
+                        Slider {sliderIndex}
+                      </Badge>
+                    </div>
+
+                    {isArray ? (
+                      <div className="space-y-3">
+                        <ScrollArea className="h-auto border rounded-lg p-4 space-y-3">
+                          {(value as string[]).map((app, appIndex) => (
+                            <div
+                              key={app + appIndex}
+                              className="flex gap-2 mb-3 last:mb-0"
+                            >
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Input
+                                    type="text"
+                                    value={app}
+                                    onChange={(e) =>
+                                      handleAppChange(
+                                        sliderIndex,
+                                        appIndex,
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Select or type a process..."
+                                    className="flex-1"
+                                  />
+                                </PopoverTrigger>
+                                <PopoverContent className="w-72 p-0">
+                                  <Command>
+                                    <CommandInput placeholder="Search processes..." />
+                                    <CommandEmpty>
+                                      No processes found.
+                                    </CommandEmpty>
+                                    <CommandList>
+                                      <CommandGroup>
+                                        {processes.map((proc) => (
+                                          <CommandItem
+                                            key={proc}
+                                            value={proc}
+                                            onSelect={() =>
+                                              handleSelectProcess(
+                                                proc,
+                                                sliderIndex,
+                                                appIndex,
+                                              )
+                                            }
+                                          >
+                                            <Check
+                                              className={cn(
+                                                'mr-2 h-4 w-4',
+                                                app === proc
+                                                  ? 'opacity-100'
+                                                  : 'opacity-0',
+                                              )}
+                                            />
+                                            {proc}
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() =>
+                                  handleAppRemove(sliderIndex, appIndex)
+                                }
+                                title="Remove application"
+                              >
+                                ✕
+                              </Button>
+                            </div>
+                          ))}
+                        </ScrollArea>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => handleAppAdd(sliderIndex)}
+                        >
+                          + Add Application
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Input
+                              type="text"
+                              value={value as string}
+                              onChange={(e) =>
+                                handleSliderLabelChange(
+                                  sliderIndex,
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Select or type a process..."
+                              className="flex-1"
+                            />
+                          </PopoverTrigger>
+
+                          <PopoverContent className="w-72 p-0">
+                            <Command>
+                              <CommandInput placeholder="Search processes..." />
+                              <CommandEmpty>No processes found.</CommandEmpty>
+                              <CommandList>
+                                <CommandGroup>
+                                  {processes.map((proc) => (
+                                    <CommandItem
+                                      key={proc}
+                                      value={proc}
+                                      onSelect={() =>
+                                        handleSelectProcess(proc, sliderIndex)
+                                      }
+                                    >
+                                      <Check
+                                        className={cn(
+                                          'mr-2 h-4 w-4',
+                                          value === proc
+                                            ? 'opacity-100'
+                                            : 'opacity-0',
+                                        )}
+                                      />
+                                      {proc}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleAppAdd(sliderIndex)}
+                          title="Convert to multiple applications"
+                        >
+                          → Multiple Apps
+                        </Button>
+                      </div>
+                    )}
+                    {sliderIndex !==
+                      Object.keys(config.slider_mapping).sort()[
+                        Object.keys(config.slider_mapping).length - 1
+                      ] && <Separator />}
+                  </div>
+                );
+              })}
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSave}
+            size="lg"
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            💾 Save Configuration
+          </Button>
+        </div>
       </div>
     </div>
   );
