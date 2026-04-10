@@ -7,42 +7,43 @@ import { join } from 'path';
 import { is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 
-export function createWindow(
-  options?: Partial<BrowserWindowConstructorOptions>,
-) {
-  const mainWindow = new BrowserWindow({
-    show: false,
-    autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
-    },
-    ...options,
-  });
+export class WindowManager {
+  private mainWindow: BrowserWindow | null = null;
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url);
-    return { action: 'deny' };
-  });
+  constructor(private options?: Partial<BrowserWindowConstructorOptions>) {}
 
-  // HMR for renderer base on electron-vite cli.
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
-  } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
-  }
-
-  mainWindow.on('close', (event) => {
-    if (mainWindow.isVisible()) {
-      event.preventDefault();
+  open() {
+    if (this.mainWindow) {
+      this.mainWindow.show();
+      return;
     }
-    mainWindow.hide();
-  });
 
-  mainWindow.on('minimize', () => {
-    mainWindow.hide();
-  });
+    this.mainWindow = new BrowserWindow({
+      show: true,
+      autoHideMenuBar: true,
+      ...(process.platform === 'linux' ? { icon } : {}),
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        sandbox: false,
+      },
+      ...this.options,
+    });
 
-  return mainWindow;
+    this.mainWindow.webContents.setWindowOpenHandler((details) => {
+      shell.openExternal(details.url);
+      return { action: 'deny' };
+    });
+
+    // HMR for renderer base on electron-vite cli.
+    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+      this.mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+    } else {
+      this.mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    }
+
+    this.mainWindow.on('close', () => {
+      this.mainWindow?.destroy();
+      this.mainWindow = null;
+    });
+  }
 }
