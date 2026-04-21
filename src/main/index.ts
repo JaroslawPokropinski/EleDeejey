@@ -5,6 +5,7 @@ import { contextMenu } from './contextMenu';
 import { WindowManager } from './window';
 import { registerIpcHandlers } from './ipc';
 import { startConfigSerialWatch } from './serial';
+import logger from 'electron-log';
 
 app.whenReady().then(async () => {
   electronApp.setAppUserModelId('io.github.jaroslawpokropinski.eledeej');
@@ -23,6 +24,17 @@ app.whenReady().then(async () => {
   tray.on('click', () => {
     appWindow.open();
   });
+
+  // Log memory usage
+  setInterval(() => {
+    const memory = process.memoryUsage();
+    const maxMemoryMb = 200;
+    if (memory.rss > maxMemoryMb * 1024 * 2024) {
+      logger.error(`Memory exceeded ${maxMemoryMb}MB, restarting...`);
+      app.relaunch();
+      app.exit();
+    }
+  }, 60000);
 
   registerIpcHandlers();
   startConfigSerialWatch();

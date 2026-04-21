@@ -15,5 +15,5 @@ public:
   static Napi::Function GetClass(Napi::Env);
 
 private:
-  HRESULT GetAllSessionsNative(std::vector<IAudioSessionControl2 *> *sessions, IAudioEndpointVolume **masterVolume);
+  HRESULT GetAllSessionsNative(Napi::Env env, std::vector<IAudioSessionControl2 *> *sessions, IAudioEndpointVolume **masterVolume);
 };
