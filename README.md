@@ -1,34 +1,27 @@
-# eledeej-vite
+# EleDeejey
 
-An Electron application with React and TypeScript
+EleDeejey is an alternative Windows software for the [omriharel/deej](https://github.com/omriharel/deej), the hardware volume mixer.
 
-## Recommended IDE Setup
+It consists of the electron [client](https://github.com/JaroslawPokropinski/EleDeejey/releases) and the [arduino code](https://github.com/JaroslawPokropinski/EleDeejey/blob/main/arduino/eleDeej.ino).
 
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+## Starting Development
 
-## Project Setup
-
-### Install
+Start the app in the `dev` environment:
 
 ```bash
-$ npm install
+npm start
 ```
 
-### Development
+## Packaging for Production
+
+To package apps for the local platform:
 
 ```bash
-$ npm run dev
+npm run package
 ```
 
-### Build
+## License
 
-```bash
-# For windows
-$ npm run build:win
+EleDeejey is released under the MIT license.
 
-# For macOS
-$ npm run build:mac
-
-# For Linux
-$ npm run build:linux
-```
+Some of the code and the icons are modified versions from the [omriharel/deej](https://github.com/omriharel/deej) project released under the MIT license.

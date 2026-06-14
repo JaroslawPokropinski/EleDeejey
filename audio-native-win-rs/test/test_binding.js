@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+/* eslint-disable @typescript-eslint/no-require-imports */
 const assert = require('assert');
-const AudioNativeWin = require('../dist/binding.js').AudioNativeWin;
+const { AudioNativeWin } = require('../dist/index.js');
 
 assert(AudioNativeWin, 'The expected module is undefined');
 

@@ -41,8 +41,7 @@ export class WindowManager {
       this.mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
     }
 
-    this.mainWindow.on('close', () => {
-      this.mainWindow?.destroy();
+    this.mainWindow.on('closed', () => {
       this.mainWindow = null;
     });
   }
